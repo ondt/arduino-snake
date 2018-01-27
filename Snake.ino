@@ -1,16 +1,22 @@
-#include "LedControl.h"
+#include "LedControl.h" // LedControl library is used for controlling a LED matrix. Find it using Library Manager or download zip here: https://github.com/wayoda/LedControl
 
-const short joyXpin = 2;
-const short joyYpin = 3;
-const short joyKEYpin = 18;
-const short joyVCCpin = 15;
-const short joyGNDpin = 14;
-const short potPin = 7;
+// there are defined all the pins. 
+struct Pin {
+	static const short joystickX = A2;   // joystick X axis pin
+	static const short joystickY = A3;   // joystick Y axis pin
+	static const short joystickKEY = 18; // joystick KEY pin (Z axis button) (A4)
+	static const short joystickVCC = 15; // virtual VCC for the joystick (to make the joystick connectable right next to the arduino nano) (A1)
+	static const short joystickGND = 14; // virtual GND for the joystick (to make the joystick connectable right next to the arduino nano) (A0)
 
-const short DINpin = 11;
-const short CLKpin = 9;
-const short CSpin  = 10;
-const short intensity = 8;
+	static const short potentiometer = A7; // potentiometer for snake speed control
+
+	static const short DIN = 11; // data-in for LED matrix
+	static const short CLK = 9;  // clock for LED matrix
+	static const short CS  = 10; // chip-select for LED matrix
+};
+
+// LED matrix brightness between 0(darkest) and 15(brightest)
+const short intensity = 15;
 
 int debugTime = 100;
 int messageRefreshTime = 4;
@@ -91,7 +97,7 @@ const bool gameOverMessage[8][length2] = {
 
 
 
-LedControl matrix(DINpin, CLKpin, CSpin, 1);
+LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
 
 void(* restart) (void) = 0; // restartovaci funkce
 
@@ -117,7 +123,7 @@ void loop() {
 
 void handleGameStates() {
 	while (gameOver) {
-		if (digitalRead(joyKEYpin)) {
+		if (digitalRead(Pin::joystickKEY)) {
 			delay(250);
 			for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
 
@@ -132,7 +138,7 @@ void handleGameStates() {
 				}
 			}
 
-			while (digitalRead(joyKEYpin)) {}
+			while (digitalRead(Pin::joystickKEY)) {}
 			restart();
 
 			while (1) {
@@ -144,7 +150,7 @@ void handleGameStates() {
 		}
 	}
 
-	if (digitalRead(joyKEYpin) && !gameOver && !dontShowIntro) {
+	if (digitalRead(Pin::joystickKEY) && !gameOver && !dontShowIntro) {
 		for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
 			for (int col = 0; col < 8; col++) {
 				delay(messageRefreshTime);
@@ -176,13 +182,13 @@ void scanJoistyck() {
 
 	while (millis() < timestamp) {
 		// nastavovani rychlosti hada, 10-1000ms
-		speed = map(analogRead(potPin), 0, 1023, 1, 1000);
+		speed = map(analogRead(Pin::potentiometer), 0, 1023, 1, 1000);
 
 		// zjistovani smeru
-		analogRead(joyYpin) < 200 ? direction = up    : 0;
-		analogRead(joyYpin) > 800 ? direction = down  : 0;//10
-		analogRead(joyXpin) < 200 ? direction = left  : 0;//11
-		analogRead(joyXpin) > 800 ? direction = right : 0;
+		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
+		analogRead(Pin::joystickY) > 800 ? direction = down  : 0;//10
+		analogRead(Pin::joystickX) < 200 ? direction = left  : 0;//11
+		analogRead(Pin::joystickX) > 800 ? direction = right : 0;
 
 		// znemozneni zmeny smeru o 180 stupnu (celem vzad)
 		direction + 2 == previousDirection ? direction = previousDirection : 0;
@@ -347,10 +353,10 @@ void updateMap() {
 
 void wait4move() {
 	while (direction == 8) {
-		analogRead(joyYpin) < 200 ? direction = up    : 0;
-		analogRead(joyYpin) > 800 ? direction = up    : 0; // dozadu se nepocita :)
-		analogRead(joyXpin) < 200 ? direction = left  : 0;
-		analogRead(joyXpin) > 800 ? direction = right : 0;
+		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
+		analogRead(Pin::joystickY) > 800 ? direction = up    : 0; // dozadu se nepocita :)
+		analogRead(Pin::joystickX) < 200 ? direction = left  : 0;
+		analogRead(Pin::joystickX) > 800 ? direction = right : 0;
 
 		// toto zpusobi opravdu nahodne generovani jidel
 		randomSeed(millis());
@@ -399,13 +405,13 @@ void set(int x, int y, bool state) {
 
 // jen zkratka, pro prehlednost kodu
 void initialize() {
-	pinMode(joyVCCpin, OUTPUT);
-	digitalWrite(joyVCCpin, HIGH); // umele VCC pro joy
+	pinMode(Pin::joystickVCC, OUTPUT);
+	digitalWrite(Pin::joystickVCC, HIGH); // umele VCC pro joy
 
-	pinMode(joyGNDpin, OUTPUT);
-	digitalWrite(joyGNDpin, LOW);  // umele GND pro joy
+	pinMode(Pin::joystickGND, OUTPUT);
+	digitalWrite(Pin::joystickGND, LOW);  // umele GND pro joy
 
-	pinMode(joyKEYpin, INPUT_PULLUP);
+	pinMode(Pin::joystickKEY, INPUT_PULLUP);
 
 	Serial.begin(9600);
 
