@@ -15,6 +15,10 @@ struct Pin {
 	static const short DIN = 12; // data-in for LED matrix
 };
 
+struct Point {
+	int row, col;
+};
+
 // LED matrix brightness between 0(darkest) and 15(brightest)
 const short intensity = 8;
 
@@ -22,54 +26,28 @@ const short intensity = 8;
 int delka = 3;
 int speed = 300;
 bool sezrano = true;
+bool win = false;
 bool gameOver = false;
 bool dontShowIntro = false;
 
 // primarni souradnice hada
-int x = 3;
-int y = 4;
+int x = 0;
+int y = 0;
 
-int foodX;
-int foodY;
+Point food;
 
+int direction = -1;
 const short up     = 0;
 const short right  = 1;
 const short down   = 2;
 const short left   = 3;
-int direction = 8;
-
-// pole Map - slouzi jako buffer pro matrix. manipuluje se s timto polem,
-// pak az se cele najednou posle na matrix.
-bool Map[8][8] = {
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 1, 0, 0, 0, 0},
-	{0, 0, 0, 1, 0, 0, 0, 0},
-	{0, 0, 0, 1, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-};
 
 // pole age - urcuje vek kazde bunky (ledky). podle toho se pak temer automaticky zhasinaji
 // bunky za hadem.
-long age[8][8] = {
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 2, 0, 0, 0, 0},
-	{0, 0, 0, 3, 0, 0, 0, 0},
-	{0, 0, 0, 4, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0}
-};
-
-// pole foodMap - obsahuje informaci o tom, kde se nachazi jidlo.
-bool foodMap[8][8];
+int age[8][8] = {};
 
 
-const short length = 56;
-const PROGMEM bool snejkMessage[8][length] = {
+const PROGMEM bool snejkMessage[8][56] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -80,8 +58,7 @@ const PROGMEM bool snejkMessage[8][length] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-const short length2 = 84;
-const PROGMEM bool gameOverMessage[8][length2] = {
+const PROGMEM bool gameOverMessage[8][84] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0},
@@ -97,15 +74,14 @@ int messageSpeed = 4; // lower = faster message scrolling
 
 LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
 
-void(* restart) (void) = 0; // restartovaci funkce
+void(* restart) (void) = 0; // restartovaci funkce TODO: Remove
+
 
 void setup() {
+	Serial.begin(115200);
 	initialize();
-	handleGameStates();
-	updateMap();
+	showSnakeMessage();
 	wait4move();
-	generateFood();
-	updateMap();
 }
 
 
@@ -114,48 +90,62 @@ void loop() {
 	handleGameStates();
 	scanJoystick();   // sleduje pohyb joystku, obstarava i cekani mezi "snimky"
 	calculateSnake(); // vypocet parametru hada
-	updateMap();      // aktualizace matrixu
+	//updateMap();      // aktualizace matrixu
+
+	// uncomment this if you want the current game board to be printed to the serial
+	// dumpGameBoard();
 }
 
 
 
-void handleGameStates() {
-	while (gameOver) {
-		if (digitalRead(Pin::joystickKEY)) {
-			delay(250);
-			for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
 
-				for (int col = 0; col < 8; col++) {
-					delay(messageSpeed);
-					for (int row = 0; row < 8; row++) {
-						// this reads the byte from the PROGMEM and displays it on the screen
-						matrix.setLed(0, row, col, pgm_read_byte(&(gameOverMessage[row][col + d])));
-					}
-				}
-			}
-
-			while (digitalRead(Pin::joystickKEY)) {}
-			restart();
-
-			while (1) {
-				Serial.println("never happens");
-			}
-
-			//gameOver = false;
-			//break;
+void dumpGameBoard() {
+	String buff = "\n\n\n";
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			if (age[row][col] < 10) buff += " ";
+			if (age[row][col] != 0) buff += age[row][col];
+			else if (col == food.col && row == food.row) buff += "@";
+			else buff += "-";
+			buff += " ";
 		}
+		buff += "\n";
+	}
+	Serial.println(buff);
+}
+
+
+
+
+void handleGameStates() {
+	if (gameOver) {
+
+		unrollSnake();
+
+		showGameOverMessage();
+
+		while (digitalRead(Pin::joystickKEY)) {}
+		restart();
+
+		while (1) {
+			Serial.println("never happens");
+		}
+
+		//gameOver = false;
+		//break;
+
 	}
 
 	if (digitalRead(Pin::joystickKEY) && !gameOver && !dontShowIntro) {
-		for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
-			for (int col = 0; col < 8; col++) {
-				delay(messageSpeed);
-				for (int row = 0; row < 8; row++) {
-					// this reads the byte from the PROGMEM and displays it on the screen
-					matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
-				}
-			}
-		}
+//		for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
+//			for (int col = 0; col < 8; col++) {
+//				delay(messageSpeed);
+//				for (int row = 0; row < 8; row++) {
+//					// this reads the byte from the PROGMEM and displays it on the screen
+//					matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
+//				}
+//			}
+//		}
 		dontShowIntro = true;
 	}
 
@@ -177,7 +167,7 @@ void scanJoystick() {
 
 	while (millis() < timestamp) {
 		// nastavovani rychlosti hada, 10-1000ms
-		speed = map(analogRead(Pin::potentiometer), 0, 1023, 1, 1000);
+		speed = map(analogRead(Pin::potentiometer), 0, 1023, 20, 1000);
 
 		// zjistovani smeru
 		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
@@ -189,20 +179,15 @@ void scanJoystick() {
 		direction + 2 == previousDirection ? direction = previousDirection : 0;
 		direction - 2 == previousDirection ? direction = previousDirection : 0;
 
-		// blikani jidla
-		if (timestamp - millis() < 1)
-			matrix.setLed(0, foodY, foodX, 1);
+		if (millis() % 100 < 50) {
+			matrix.setLed(0, food.row, food.col, 1);
+		} else {
+			matrix.setLed(0, food.row, food.col, 0);
+		}
 
-		else if (timestamp - millis() < speed / 4)
-			matrix.setLed(0, foodY, foodX, 0);
-
-		else if (timestamp - millis() < speed / 2)
-			matrix.setLed(0, foodY, foodX, 1);
-
-		else if (timestamp - millis() < 3 * speed / 4)
-			matrix.setLed(0, foodY, foodX, 0);
 	}
 }
+
 
 
 
@@ -233,60 +218,77 @@ void calculateSnake() {
 		set(x, y, 1);
 		break;
 	}
-	detectBody();
-	handleFood();
-	updateAge();
+
+
+
+
+
 }
 
+// pohodlne zanese data do pole Map, zvysi jejich vek.
+void set(int x, int y, bool state) {
+//	Map[y][x] = state;
+	matrix.setLed(0, y, x, state);
 
-
-void detectBody() {
+	// TODO: check that
 	if (age[y][x] > 3) {
 		gameOver = true;
+		return;
 	}
+
+	handleFood();
+
+	updateAges();
+	age[y][x]++;
 }
 
-
 void handleFood() {
-	if (foodMap[y][x]) {
-		foodMap[y][x] = 0;
+//	foodMap[food.row][food.col]
+	if (x == food.col && y == food.row) {
+//		foodMap[y][x] = 0;
 		delka++;
 		sezrano = true;
 	}
 }
 
+// postara se o spravne nastaveni "stari" rozsvicenych ledek v poli age.
+void updateAges() {
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
 
+			// vyjimka pro aktualni bod (hlavu hada)
+			if (row == y && col == x) continue;
+
+
+			if (age[row][col] > 0 ) {
+				age[row][col]++;
+			}
+
+			if (age[row][col] > delka || age[row][col] == 0) {
+				age[row][col] = 0;
+				matrix.setLed(0, row, col, 0);
+			}
+
+		}
+	}
+}
 
 void generateFood() {
 	if (sezrano) {
-		while (Map[foodY][foodX] == 1) {
-			foodX = random(8);
-			foodY = random(8);
+		if (delka >= 64) {
+			win = true;
+			return;
 		}
 
-		Map[foodY][foodX] = 1;
-		foodMap[foodY][foodX] = 1;
+		while (age[food.row][food.col] > 0) {
+			food.col = random(8);
+			food.row = random(8);
+		}
+
+//		foodMap[food.row][food.col] = 1;
 		sezrano = false;
 	}
 }
-
-
-// postara se o spravne nastaveni "stari" rozsvicenych ledek v poli age.
-void updateAge() {
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			if (age[row][col] > delka || age[row][col] == 0) {
-				age[row][col] = 0;
-				Map[row][col] = 0;
-			}
-
-			if (age[row][col] != 0 && age[row][col] != -1) {
-				age[row][col]++;
-			}
-		}
-	}
-}
-
 
 
 // zpusibi objeveni hada na druhe strane obrazovky v pripade "vyjeti ven"
@@ -298,56 +300,46 @@ void fixOverflow() {
 }
 
 
-
-// najde konce hada. nedokoncene, zabugovane, funguje spolehlive jen poro zvisleho hada. nepouzite.
-void detectEnds() {
-	bool detectTerminate = false;
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			if (Map[row][col] == 1 && detectTerminate == false) {
-				y = row;
-				x = col;
-				detectTerminate = true;
-			}
-
-			if (Map[row][col] == 1 && detectTerminate == true) {
-				// assY = row; // zastarale, pred pouzitim zkontrolovat!
-				// assX = col; // zastarale, pred pouzitim zkontrolovat!
-			}
-		}
-	}
-	detectTerminate = false;
-}
-
-
-
 // prekresli obsah pole Map na fyzicky displej, zobrazuje i data z foodMap
-void updateMap() {
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			if (foodMap[row][col]) {
-				matrix.setLed(0, row, col, foodMap[row][col]);
-			}
-			else {
-				matrix.setLed(0, row, col, Map[row][col]);
-			}
-		}
-	}
+//void updateMap() {
+//	for (int row = 0; row < 8; row++) {
+//		for (int col = 0; col < 8; col++) {
+//			if (foodMap[row][col]) {
+//				matrix.setLed(0, row, col, foodMap[row][col]);
+//			}
+//			else {
+//				matrix.setLed(0, row, col, Map[row][col]);
+//			}
+//		}
+//	}
+//}
+
+
+
+
+void unrollSnake() {
+
+//		delay(250);
+
+
+//	for (int i = 0; i < delka; i++) {
+//		Serial.println(i);
+//	}
+//	Serial.println();
+//	Serial.println();
+//	Serial.println();
+//	Serial.println("ageDump:");
+//
+//
+//
+
+
 }
 
 
-// // printMessage(pole, sizeof(pole[0]));
-
-// void printMessage(const bool *arrayy, int size)
-// {
-
-
-// }
-
-
-
+// TODO: fix!!
 void wait4move() {
-	while (direction == 8) {
+	while (direction == -1) {
 		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
 		analogRead(Pin::joystickY) > 800 ? direction = up    : 0; // dozadu se nepocita :)
 		analogRead(Pin::joystickX) < 200 ? direction = left  : 0;
@@ -356,29 +348,12 @@ void wait4move() {
 		// toto zpusobi opravdu nahodne generovani jidel
 		randomSeed(millis());
 	}
-	foodX = random(8);
-	foodY = random(8);
+	
+	food.row = random(8);
+	food.col = random(8);
 }
 
 
-// nakresli na obrazovku obrazek z pole. nepouzite.
-void draw(byte data[8]) {
-	for (int i; i <= 7; i++) {
-		matrix.setRow(0, i, data[i]);
-	}
-}
-
-
-
-
-
-
-
-// pohodlne zanese data do pole Map, zvysi jejich vek.
-void set(int x, int y, bool state) {
-	Map[y][x] = state;
-	age[y][x]++;
-}
 
 // jen zkratka, pro prehlednost kodu
 void initialize() {
@@ -390,11 +365,51 @@ void initialize() {
 
 	pinMode(Pin::joystickKEY, INPUT_PULLUP);
 
-	Serial.begin(9600);
-
 	matrix.shutdown(0, false);         // zapnuti matrixu
 	matrix.setIntensity(0, intensity); // nastaveni jasu matrixu
 	matrix.clearDisplay(0);            // smazani matrixu
 }
+
+
+
+
+
+
+
+
+void showSnakeMessage() {
+	for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
+		for (int col = 0; col < 8; col++) {
+			delay(messageSpeed);
+			for (int row = 0; row < 8; row++) {
+				// this reads the byte from the PROGMEM and displays it on the screen
+				matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
+			}
+		}
+	}
+}
+
+void showGameOverMessage() {
+	for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
+		for (int col = 0; col < 8; col++) {
+			delay(messageSpeed);
+			for (int row = 0; row < 8; row++) {
+				// this reads the byte from the PROGMEM and displays it on the screen
+				matrix.setLed(0, row, col, pgm_read_byte(&(gameOverMessage[row][col + d])));
+			}
+		}
+	}
+}
+
+
+void showWinMessage() {
+}
+
+
+
+
+
+
+
 
 
