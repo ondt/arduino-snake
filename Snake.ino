@@ -1,6 +1,6 @@
 #include "LedControl.h" // LedControl library is used for controlling a LED matrix. Find it using Library Manager or download zip here: https://github.com/wayoda/LedControl
 
-// there are defined all the pins. 
+// there are defined all the pins.
 struct Pin {
 	static const short joystickX = A2;   // joystick X axis pin
 	static const short joystickY = A3;   // joystick Y axis pin
@@ -10,16 +10,13 @@ struct Pin {
 
 	static const short potentiometer = A7; // potentiometer for snake speed control
 
-	static const short DIN = 11; // data-in for LED matrix
-	static const short CLK = 9;  // clock for LED matrix
-	static const short CS  = 10; // chip-select for LED matrix
+	static const short CLK = 10; // clock for LED matrix
+	static const short CS  = 11; // chip-select for LED matrix
+	static const short DIN = 12; // data-in for LED matrix
 };
 
 // LED matrix brightness between 0(darkest) and 15(brightest)
-const short intensity = 15;
-
-int debugTime = 100;
-int messageRefreshTime = 4;
+const short intensity = 8;
 
 
 int delka = 3;
@@ -72,7 +69,7 @@ bool foodMap[8][8];
 
 
 const short length = 56;
-const bool snejkMessage[8][length] = {
+const PROGMEM bool snejkMessage[8][length] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -84,7 +81,7 @@ const bool snejkMessage[8][length] = {
 };
 
 const short length2 = 84;
-const bool gameOverMessage[8][length2] = {
+const PROGMEM bool gameOverMessage[8][length2] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0},
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0},
@@ -95,6 +92,7 @@ const bool gameOverMessage[8][length2] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0}
 };
 
+int messageSpeed = 4; // lower = faster message scrolling
 
 
 LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
@@ -114,7 +112,7 @@ void setup() {
 void loop() {
 	generateFood();
 	handleGameStates();
-	scanJoistyck();   // sleduje pohyb joystku, obstarava i cekani mezi "snimky"
+	scanJoystick();   // sleduje pohyb joystku, obstarava i cekani mezi "snimky"
 	calculateSnake(); // vypocet parametru hada
 	updateMap();      // aktualizace matrixu
 }
@@ -128,12 +126,10 @@ void handleGameStates() {
 			for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
 
 				for (int col = 0; col < 8; col++) {
-					delay(messageRefreshTime);
-
+					delay(messageSpeed);
 					for (int row = 0; row < 8; row++) {
-						int i = col + d;
-						// matrix.setLed(0, row, col, *(arrayy+size*row+i));
-						matrix.setLed(0, row, col, gameOverMessage[row][i]);
+						// this reads the byte from the PROGMEM and displays it on the screen
+						matrix.setLed(0, row, col, pgm_read_byte(&(gameOverMessage[row][col + d])));
 					}
 				}
 			}
@@ -153,11 +149,10 @@ void handleGameStates() {
 	if (digitalRead(Pin::joystickKEY) && !gameOver && !dontShowIntro) {
 		for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
 			for (int col = 0; col < 8; col++) {
-				delay(messageRefreshTime);
+				delay(messageSpeed);
 				for (int row = 0; row < 8; row++) {
-					int i = col + d;
-					// matrix.setLed(0, row, col, *(arrayy+size*row+i));
-					matrix.setLed(0, row, col, snejkMessage[row][i]);
+					// this reads the byte from the PROGMEM and displays it on the screen
+					matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
 				}
 			}
 		}
@@ -176,7 +171,7 @@ void handleGameStates() {
 
 
 // skenovani vstupu po urcity cas, znemozneni zmeny smeru o 180 stupnu (celem vzad), a jeste par blbosti
-void scanJoistyck() {
+void scanJoystick() {
 	int previousDirection = direction;
 	long timestamp = millis() + speed;
 
@@ -371,24 +366,6 @@ void draw(byte data[8]) {
 	for (int i; i <= 7; i++) {
 		matrix.setRow(0, i, data[i]);
 	}
-}
-
-
-
-
-// debug
-void msg(String input, int n) {
-	delay(debugTime);
-	Serial.print(input);
-	Serial.println(n);
-	delay(debugTime);
-}
-
-// debug
-void msg(String input) {
-	delay(debugTime);
-	Serial.println(input);
-	delay(debugTime);
 }
 
 
