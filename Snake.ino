@@ -9,9 +9,9 @@
 struct Pin {
 	static const short joystickX = A2;   // joystick X axis pin
 	static const short joystickY = A3;   // joystick Y axis pin
-	static const short joystickKEY = 18; // joystick KEY pin (Z axis button) (A4)
-	static const short joystickVCC = 15; // virtual VCC for the joystick (to make the joystick connectable right next to the arduino nano) (A1)
-	static const short joystickGND = 14; // virtual GND for the joystick (to make the joystick connectable right next to the arduino nano) (A0)
+//	static const short joystickKEY = 18; // joystick KEY pin (Analog 4) (Z axis button) 
+	static const short joystickVCC = 15; // virtual VCC for the joystick (Analog 1) (to make the joystick connectable right next to the arduino nano) 
+	static const short joystickGND = 14; // virtual GND for the joystick (Analog 0) (to make the joystick connectable right next to the arduino nano) 
 
 	static const short potentiometer = A7; // potentiometer for snake speed control
 
@@ -33,7 +33,7 @@ const short initialSnakeLength = 3;
 void setup() {
 	Serial.begin(115200);  // set the same baud rate on your Serial Monitor
 	initialize();         // initialize pins & LED matrix
-	calibrateJoystick(); // calibrate the joystick home
+	calibrateJoystick(); // calibrate the joystick home (do not touch it)
 	showSnakeMessage(); // scrolls the 'snake' message around the matrix
 }
 
@@ -88,7 +88,7 @@ const short right  = 2;
 const short down   = 3;
 const short left   = 4;
 
-const int joystickThreshold = 120;
+const int joystickThreshold = 160;
 
 // artificial logarithmity of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
 const float logarithmity = 0.4;
@@ -324,7 +324,7 @@ void initialize() {
 	pinMode(Pin::joystickGND, OUTPUT);
 	digitalWrite(Pin::joystickGND, LOW);
 
-	pinMode(Pin::joystickKEY, INPUT_PULLUP);
+//	pinMode(Pin::joystickKEY, INPUT_PULLUP);
 
 	matrix.shutdown(0, false);
 	matrix.setIntensity(0, intensity);
