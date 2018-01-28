@@ -4,4 +4,4 @@
 
 ---
 
-**Video:** https://youtu.be/k6CHJ9VKTnY# arduino-snake
+**Video:** https://youtu.be/k6CHJ9VKTnY
