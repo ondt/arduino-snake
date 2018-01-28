@@ -1,6 +1,11 @@
 #include "LedControl.h" // LedControl library is used for controlling a LED matrix. Find it using Library Manager or download zip here: https://github.com/wayoda/LedControl
 
-// there are defined all the pins.
+
+// --------------------------------------------------------------- //
+// ------------------------- user config ------------------------- //
+// --------------------------------------------------------------- //
+
+// there are defined all the pins
 struct Pin {
 	static const short joystickX = A2;   // joystick X axis pin
 	static const short joystickY = A3;   // joystick Y axis pin
@@ -15,37 +20,81 @@ struct Pin {
 	static const short DIN = 12; // data-in for LED matrix
 };
 
-struct Point {
-	int row, col;
-};
-
-// LED matrix brightness between 0(darkest) and 15(brightest)
+// LED matrix brightness: between 0(darkest) and 15(brightest)
 const short intensity = 8;
 
+// lower = faster message scrolling
+const short messageSpeed = 3;
 
-int delka = 3;
-int speed = 300;
-bool sezrano = true;
+// initial snake length (1...63, recommended 3)
+const short initialSnakeLength = 3;
+
+
+void setup() {
+	Serial.begin(115200);  // set the same baud rate on your Serial Monitor
+	initialize();         // initialize pins & LED matrix
+	calibrateJoystick(); // calibrate the joystick home
+	showSnakeMessage(); // scrolls the 'snake' message around the matrix
+}
+
+
+void loop() {
+	generateFood();    // if there is no food, generate one
+	scanJoystick();    // watches joystick movements & blinks with food
+	calculateSnake();  // calculates snake parameters
+	handleGameStates();
+
+	// uncomment this if you want the current game board to be printed to the serial (slows down the game a bit)
+	// dumpGameBoard();
+}
+
+
+
+
+
+// --------------------------------------------------------------- //
+// -------------------- supporting variables --------------------- //
+// --------------------------------------------------------------- //
+
+LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
+
+struct Point {
+	int row = 0, col = 0; // TODO: set method
+	Point(int row = 0, int col = 0): row(row), col(col) {}
+};
+
+struct Coordinate {
+	int x = 0, y = 0; // TODO: set method
+	Coordinate(int x = 0, int y = 0): x(x), y(y) {}
+};
+
 bool win = false;
 bool gameOver = false;
-bool dontShowIntro = false;
 
-// primarni souradnice hada
-int x = 0;
-int y = 0;
+Coordinate joystickHome;
 
-Point food;
+// primary snake head coordinates (snake head)
+Point snake;
 
-int direction = -1;
-const short up     = 0;
-const short right  = 1;
-const short down   = 2;
-const short left   = 3;
+Point food(-1, -1); // food is not anywhere yet
 
-// pole age - urcuje vek kazde bunky (ledky). podle toho se pak temer automaticky zhasinaji
-// bunky za hadem.
+int snakeLength = initialSnakeLength;
+
+int snakeSpeed = 1;
+
+int snakeDirection = 0;
+const short up     = 1;
+const short right  = 2;
+const short down   = 3;
+const short left   = 4;
+
+const int joystickThreshold = 120;
+
+// artificial logarithmity of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
+const float logarithmity = 0.4;
+
+// holds age of the every pixel in matrix. If age > 0, it glows
 int age[8][8] = {};
-
 
 const PROGMEM bool snejkMessage[8][56] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -58,45 +107,233 @@ const PROGMEM bool snejkMessage[8][56] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-const PROGMEM bool gameOverMessage[8][84] = {
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0}
+const PROGMEM bool gameOverMessage[8][90] = {
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
-int messageSpeed = 4; // lower = faster message scrolling
 
 
-LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
-
-void(* restart) (void) = 0; // restartovaci funkce TODO: Remove
 
 
-void setup() {
-	Serial.begin(115200);
-	initialize();
-	showSnakeMessage();
-	wait4move();
+// --------------------------------------------------------------- //
+// -------------------------- functions -------------------------- //
+// --------------------------------------------------------------- //
+
+
+// if there is no food, generate one, also check for victory
+void generateFood() {
+	if (food.row == -1 || food.col == -1) {
+		// self-explanatory
+		if (snakeLength >= 64) {
+			win = true;
+			return;
+		}
+
+		// generate food until it is in the right position
+		do {
+			food.col = random(8);
+			food.row = random(8);
+		} while (age[food.row][food.col] > 0);
+	}
 }
 
 
-void loop() {
-	generateFood();
-	handleGameStates();
-	scanJoystick();   // sleduje pohyb joystku, obstarava i cekani mezi "snimky"
-	calculateSnake(); // vypocet parametru hada
-	//updateMap();      // aktualizace matrixu
-
-	// uncomment this if you want the current game board to be printed to the serial
-	// dumpGameBoard();
+// inverse logarithm with variable steepness, see https://www.desmos.com/calculator/qmyqv84xis (input = 0...1)
+float lnx(float n) {
+	if(n < 0) return 0;
+	if(n > 1) return 1;
+	n = -log(-n * logarithmity + 1);
+	if (isinf(n)) n = lnx(0.999999);
+	return n;
 }
 
 
+// watches joystick movements & blinks with food
+void scanJoystick() {
+	int previousDirection = snakeDirection; // save the last direction
+	long timestamp = millis() + snakeSpeed; // when the next frame will be rendered
+
+	while (millis() < timestamp) {
+		// calculate snake speed logarithmically (10...1000ms)
+		float raw = mapf(analogRead(Pin::potentiometer), 0, 1023, 0, 1);
+		snakeSpeed = mapf(lnx(raw), lnx(0), lnx(1), 10, 1000);
+		if (snakeSpeed == 0) snakeSpeed = 1; // safety: speed can not be 0
+
+		// determine the direction of the snake
+		analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold ? snakeDirection = up    : 0;
+		analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold ? snakeDirection = down  : 0;
+		analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold ? snakeDirection = left  : 0;
+		analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold ? snakeDirection = right : 0;
+
+		// ignore directional change by 180 degrees (no effect for non-moving snake)
+		snakeDirection + 2 == previousDirection && previousDirection != 0 ? snakeDirection = previousDirection : 0;
+		snakeDirection - 2 == previousDirection && previousDirection != 0 ? snakeDirection = previousDirection : 0;
+
+		// intelligently blink with the food
+		matrix.setLed(0, food.row, food.col, millis() % 100 < 50 ? 1 : 0);
+	}
+}
+
+
+// calculate snake movement data
+void calculateSnake() {
+	switch (snakeDirection) {
+	case up:
+		snake.row--;
+		fixEdge();
+		matrix.setLed(0, snake.row, snake.col, 1);
+		break;
+
+	case right:
+		snake.col++;
+		fixEdge();
+		matrix.setLed(0, snake.row, snake.col, 1);
+		break;
+
+	case down:
+		snake.row++;
+		fixEdge();
+		matrix.setLed(0, snake.row, snake.col, 1);
+		break;
+
+	case left:
+		snake.col--;
+		fixEdge();
+		matrix.setLed(0, snake.row, snake.col, 1);
+		break;
+
+	default: // if the snake is not moving, exit
+		return;
+	}
+
+	// if there is any age (snake body), this will cause the end of the game (snake must be moving)
+	if (age[snake.row][snake.col] != 0 && snakeDirection != 0) {
+		gameOver = true;
+		return;
+	}
+
+	// check if the food was eaten
+	if (snake.row == food.row && snake.col == food.col) {
+		snakeLength++;
+		food.row = -1; // reset food
+		food.col = -1;
+	}
+
+	// increment ages if all lit leds
+	updateAges();
+
+	// change the age of the snake head from 0 to 1
+	age[snake.row][snake.col]++;
+}
+
+
+// causes the snake to appear on the other side of the screen if it gets out of the edge
+void fixEdge() {
+	snake.col < 0 ? snake.col += 8 : 0;
+	snake.col > 7 ? snake.col -= 8 : 0;
+	snake.row < 0 ? snake.row += 8 : 0;
+	snake.row > 7 ? snake.row -= 8 : 0;
+}
+
+
+// increment ages if all lit leds, turn off too old ones
+void updateAges() {
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			// if the led is lit, increment it's age
+			if (age[row][col] > 0 ) {
+				age[row][col]++;
+			}
+
+			// if the age exceeds the length of the snake, switch it off
+			if (age[row][col] > snakeLength) {
+				matrix.setLed(0, row, col, 0);
+				age[row][col] = 0;
+			}
+		}
+	}
+}
+
+
+void handleGameStates() {
+	if (gameOver || win) {
+		unrollSnake();
+
+		if (gameOver) showGameOverMessage();
+		else if (win) showWinMessage();
+
+		// re-init the game
+		win = false;
+		gameOver = false;
+		snake.row = random(8);
+		snake.col = random(8);
+		food.row = -1;
+		food.col = -1;
+		snakeLength = initialSnakeLength;
+		snakeDirection = 0;
+		age[8][8] = {};
+		matrix.clearDisplay(0);
+	}
+}
+
+
+void unrollSnake() {
+	// switch off the food LED
+	matrix.setLed(0, food.row, food.col, 0);
+
+	delay(600);
+
+	for (int i = 1; i <= snakeLength; i++) {
+		for (int row = 0; row < 8; row++) {
+			for (int col = 0; col < 8; col++) {
+				if (age[row][col] == i) {	
+					matrix.setLed(0, row, col, 0);
+					delay(100);
+				}
+			}
+		}
+	}
+}
+
+
+// calibrate the joystick home for 10 times
+void calibrateJoystick() {
+	Coordinate values;
+
+	for (int i = 0; i < 10; i++) {
+		values.x += analogRead(Pin::joystickX);
+		values.y += analogRead(Pin::joystickY);
+	}
+
+	joystickHome.x = values.x / 10;
+	joystickHome.y = values.y / 10;
+}
+
+
+void initialize() {
+	pinMode(Pin::joystickVCC, OUTPUT);
+	digitalWrite(Pin::joystickVCC, HIGH);
+
+	pinMode(Pin::joystickGND, OUTPUT);
+	digitalWrite(Pin::joystickGND, LOW);
+
+	pinMode(Pin::joystickKEY, INPUT_PULLUP);
+
+	matrix.shutdown(0, false);
+	matrix.setIntensity(0, intensity);
+	matrix.clearDisplay(0);
+
+	randomSeed(analogRead(A5));
+	snake.row = random(8);
+	snake.col = random(8);
+}
 
 
 void dumpGameBoard() {
@@ -115,268 +352,7 @@ void dumpGameBoard() {
 }
 
 
-
-
-void handleGameStates() {
-	if (gameOver) {
-
-		unrollSnake();
-
-		showGameOverMessage();
-
-		while (digitalRead(Pin::joystickKEY)) {}
-		restart();
-
-		while (1) {
-			Serial.println("never happens");
-		}
-
-		//gameOver = false;
-		//break;
-
-	}
-
-	if (digitalRead(Pin::joystickKEY) && !gameOver && !dontShowIntro) {
-//		for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
-//			for (int col = 0; col < 8; col++) {
-//				delay(messageSpeed);
-//				for (int row = 0; row < 8; row++) {
-//					// this reads the byte from the PROGMEM and displays it on the screen
-//					matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
-//				}
-//			}
-//		}
-		dontShowIntro = true;
-	}
-
-	dontShowIntro = true;
-
-}
-
-
-
-
-
-
-
-
-// skenovani vstupu po urcity cas, znemozneni zmeny smeru o 180 stupnu (celem vzad), a jeste par blbosti
-void scanJoystick() {
-	int previousDirection = direction;
-	long timestamp = millis() + speed;
-
-	while (millis() < timestamp) {
-		// nastavovani rychlosti hada, 10-1000ms
-		speed = map(analogRead(Pin::potentiometer), 0, 1023, 20, 1000);
-
-		// zjistovani smeru
-		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
-		analogRead(Pin::joystickY) > 800 ? direction = down  : 0;//10
-		analogRead(Pin::joystickX) < 200 ? direction = left  : 0;//11
-		analogRead(Pin::joystickX) > 800 ? direction = right : 0;
-
-		// znemozneni zmeny smeru o 180 stupnu (celem vzad)
-		direction + 2 == previousDirection ? direction = previousDirection : 0;
-		direction - 2 == previousDirection ? direction = previousDirection : 0;
-
-		if (millis() % 100 < 50) {
-			matrix.setLed(0, food.row, food.col, 1);
-		} else {
-			matrix.setLed(0, food.row, food.col, 0);
-		}
-
-	}
-}
-
-
-
-
-// spocita kompletni data o zmene pohybu hada a zanese je do pole Map.
-void calculateSnake() {
-	switch (direction) {
-	case up:
-		y--;
-		fixOverflow();
-		set(x, y, 1);
-		break;
-
-	case right:
-		x++;
-		fixOverflow();
-		set(x, y, 1);
-		break;
-
-	case down:
-		y++;
-		fixOverflow();
-		set(x, y, 1);
-		break;
-
-	case left:
-		x--;
-		fixOverflow();
-		set(x, y, 1);
-		break;
-	}
-
-
-
-
-
-}
-
-// pohodlne zanese data do pole Map, zvysi jejich vek.
-void set(int x, int y, bool state) {
-//	Map[y][x] = state;
-	matrix.setLed(0, y, x, state);
-
-	// TODO: check that
-	if (age[y][x] > 3) {
-		gameOver = true;
-		return;
-	}
-
-	handleFood();
-
-	updateAges();
-	age[y][x]++;
-}
-
-void handleFood() {
-//	foodMap[food.row][food.col]
-	if (x == food.col && y == food.row) {
-//		foodMap[y][x] = 0;
-		delka++;
-		sezrano = true;
-	}
-}
-
-// postara se o spravne nastaveni "stari" rozsvicenych ledek v poli age.
-void updateAges() {
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-
-			// vyjimka pro aktualni bod (hlavu hada)
-			if (row == y && col == x) continue;
-
-
-			if (age[row][col] > 0 ) {
-				age[row][col]++;
-			}
-
-			if (age[row][col] > delka || age[row][col] == 0) {
-				age[row][col] = 0;
-				matrix.setLed(0, row, col, 0);
-			}
-
-		}
-	}
-}
-
-void generateFood() {
-	if (sezrano) {
-		if (delka >= 64) {
-			win = true;
-			return;
-		}
-
-		while (age[food.row][food.col] > 0) {
-			food.col = random(8);
-			food.row = random(8);
-		}
-
-//		foodMap[food.row][food.col] = 1;
-		sezrano = false;
-	}
-}
-
-
-// zpusibi objeveni hada na druhe strane obrazovky v pripade "vyjeti ven"
-void fixOverflow() {
-	x < 0 ? x += 8 : 0;
-	x > 7 ? x -= 8 : 0;
-	y < 0 ? y += 8 : 0;
-	y > 7 ? y -= 8 : 0;
-}
-
-
-// prekresli obsah pole Map na fyzicky displej, zobrazuje i data z foodMap
-//void updateMap() {
-//	for (int row = 0; row < 8; row++) {
-//		for (int col = 0; col < 8; col++) {
-//			if (foodMap[row][col]) {
-//				matrix.setLed(0, row, col, foodMap[row][col]);
-//			}
-//			else {
-//				matrix.setLed(0, row, col, Map[row][col]);
-//			}
-//		}
-//	}
-//}
-
-
-
-
-void unrollSnake() {
-
-//		delay(250);
-
-
-//	for (int i = 0; i < delka; i++) {
-//		Serial.println(i);
-//	}
-//	Serial.println();
-//	Serial.println();
-//	Serial.println();
-//	Serial.println("ageDump:");
-//
-//
-//
-
-
-}
-
-
-// TODO: fix!!
-void wait4move() {
-	while (direction == -1) {
-		analogRead(Pin::joystickY) < 200 ? direction = up    : 0;
-		analogRead(Pin::joystickY) > 800 ? direction = up    : 0; // dozadu se nepocita :)
-		analogRead(Pin::joystickX) < 200 ? direction = left  : 0;
-		analogRead(Pin::joystickX) > 800 ? direction = right : 0;
-
-		// toto zpusobi opravdu nahodne generovani jidel
-		randomSeed(millis());
-	}
-	
-	food.row = random(8);
-	food.col = random(8);
-}
-
-
-
-// jen zkratka, pro prehlednost kodu
-void initialize() {
-	pinMode(Pin::joystickVCC, OUTPUT);
-	digitalWrite(Pin::joystickVCC, HIGH); // umele VCC pro joy
-
-	pinMode(Pin::joystickGND, OUTPUT);
-	digitalWrite(Pin::joystickGND, LOW);  // umele GND pro joy
-
-	pinMode(Pin::joystickKEY, INPUT_PULLUP);
-
-	matrix.shutdown(0, false);         // zapnuti matrixu
-	matrix.setIntensity(0, intensity); // nastaveni jasu matrixu
-	matrix.clearDisplay(0);            // smazani matrixu
-}
-
-
-
-
-
-
-
-
+// scrolls the 'snake' message around the matrix
 void showSnakeMessage() {
 	for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
 		for (int col = 0; col < 8; col++) {
@@ -389,6 +365,8 @@ void showSnakeMessage() {
 	}
 }
 
+
+// scrolls the 'game over' message around the matrix
 void showGameOverMessage() {
 	for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
 		for (int col = 0; col < 8; col++) {
@@ -402,14 +380,15 @@ void showGameOverMessage() {
 }
 
 
+// scrolls the 'win' message around the matrix
 void showWinMessage() {
+	// not implemented yet
 }
 
 
-
-
-
-
-
+// standard map function, but with floats
+float mapf(float x, float in_min, float in_max, float out_min, float out_max) {
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 
