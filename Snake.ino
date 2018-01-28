@@ -93,7 +93,10 @@ const int joystickThreshold = 160;
 // artificial logarithmity of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
 const float logarithmity = 0.4;
 
-// holds age of the every pixel in matrix. If age > 0, it glows
+// age array: holds age of the every pixel in matrix. If age > 0, it glows.
+// on every frame, the age of all lit pixels is incremented.
+// when the age of some pixel exceeds the length of the snake, it goes out.
+// age 1 is added in the current snake direction next to the last position of the snake head.
 int age[8][8] = {};
 
 const PROGMEM bool snejkMessage[8][56] = {
