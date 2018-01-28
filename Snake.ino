@@ -278,7 +278,7 @@ void handleGameStates() {
 		food.col = -1;
 		snakeLength = initialSnakeLength;
 		snakeDirection = 0;
-		age[8][8] = {};
+		memset(age, 0, sizeof(age[0][0]) * 8 * 8);
 		matrix.clearDisplay(0);
 	}
 }
