@@ -9,14 +9,14 @@
 struct Pin {
 	static const short joystickX = A2;   // joystick X axis pin
 	static const short joystickY = A3;   // joystick Y axis pin
-//	static const short joystickKEY = 18; // joystick KEY pin (Analog 4) (Z axis button) 
-	static const short joystickVCC = 15; // virtual VCC for the joystick (Analog 1) (to make the joystick connectable right next to the arduino nano) 
-	static const short joystickGND = 14; // virtual GND for the joystick (Analog 0) (to make the joystick connectable right next to the arduino nano) 
+//	static const short joystickKEY = 18; // (not used) joystick KEY pin (Analog 4) (Z axis button)
+	static const short joystickVCC = 15; // virtual VCC for the joystick (Analog 1) (to make the joystick connectable right next to the arduino nano)
+	static const short joystickGND = 14; // virtual GND for the joystick (Analog 0) (to make the joystick connectable right next to the arduino nano)
 
 	static const short potentiometer = A7; // potentiometer for snake speed control
 
-	static const short CLK = 10; // clock for LED matrix
-	static const short CS  = 11; // chip-select for LED matrix
+	static const short CLK = 10;   // clock for LED matrix
+	static const short CS  = 11;  // chip-select for LED matrix
 	static const short DIN = 12; // data-in for LED matrix
 };
 
@@ -59,41 +59,45 @@ void loop() {
 LedControl matrix(Pin::DIN, Pin::CLK, Pin::CS, 1);
 
 struct Point {
-	int row = 0, col = 0; // TODO: set method
+	int row = 0, col = 0;
 	Point(int row = 0, int col = 0): row(row), col(col) {}
 };
 
 struct Coordinate {
-	int x = 0, y = 0; // TODO: set method
+	int x = 0, y = 0;
 	Coordinate(int x = 0, int y = 0): x(x), y(y) {}
 };
 
 bool win = false;
 bool gameOver = false;
 
-Coordinate joystickHome;
-
-// primary snake head coordinates (snake head)
+// primary snake head coordinates (snake head), it will be randomly generated
 Point snake;
 
-Point food(-1, -1); // food is not anywhere yet
+// food is not anywhere yet
+Point food(-1, -1);
 
-int snakeLength = initialSnakeLength;
+// construct with default values in case the user turns off the calibration
+Coordinate joystickHome(500, 500);
 
-int snakeSpeed = 1;
+// snake parameters
+int snakeLength = initialSnakeLength; // choosed by the user in the config section
+int snakeSpeed = 1; // will be set according to potentiometer value, cannot be 0
+int snakeDirection = 0; // if it is 0, the snake does not move
 
-int snakeDirection = 0;
+// direction constants
 const short up     = 1;
 const short right  = 2;
-const short down   = 3;
-const short left   = 4;
+const short down   = 3; // 'down - 2' must be 'up'
+const short left   = 4; // 'left - 2' must be 'right'
 
+// threshold where movement of the joystick will be accepted
 const int joystickThreshold = 160;
 
-// artificial logarithmity of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
+// artificial logarithmity (steepness) of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
 const float logarithmity = 0.4;
 
-// age array: holds age of the every pixel in matrix. If age > 0, it glows.
+// the age array: holds an 'age' of the every pixel in the matrix. If age > 0, it glows.
 // on every frame, the age of all lit pixels is incremented.
 // when the age of some pixel exceeds the length of the snake, it goes out.
 // age 1 is added in the current snake direction next to the last position of the snake head.
@@ -113,7 +117,7 @@ void generateFood() {
 		// self-explanatory
 		if (snakeLength >= 64) {
 			win = true;
-			return;
+			return; // prevent the food generator from running, in this case it would run forever, because it will not be able to find a pixel without a snake
 		}
 
 		// generate food until it is in the right position
@@ -125,12 +129,12 @@ void generateFood() {
 }
 
 
-// inverse logarithm with variable steepness, see https://www.desmos.com/calculator/qmyqv84xis (input = 0...1)
+// custom inverse logarithm with variable steepness (logarithmity), see https://www.desmos.com/calculator/qmyqv84xis (input = 0...1)
 float lnx(float n) {
 	if(n < 0) return 0;
 	if(n > 1) return 1;
-	n = -log(-n * logarithmity + 1);
-	if (isinf(n)) n = lnx(0.999999);
+	n = -log(-n * logarithmity + 1); // natural logarithm
+	if (isinf(n)) n = lnx(0.999999); // prevent returning 'inf'
 	return n;
 }
 
@@ -223,7 +227,7 @@ void fixEdge() {
 }
 
 
-// increment ages if all lit leds, turn off too old ones
+// increment ages if all lit leds, turn off too old ones depending on the length of the snake
 void updateAges() {
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
@@ -525,7 +529,6 @@ void showScoreMessage(int score) {
 		for (int col = 0; col < 8; col++) {
 			delay(messageSpeed);
 			for (int row = 0; row < 8; row++) {
-
 				if (d <= sizeof(scoreMessage[0]) - 8) {
 					matrix.setLed(0, row, col, pgm_read_byte(&(scoreMessage[row][col + d])));
 				}
@@ -536,13 +539,11 @@ void showScoreMessage(int score) {
 				if (score < 10) c += 8;
 
 				if (c >= 0 && c < 8) {
-					if (first > 0) matrix.setLed(0, row, col, pgm_read_byte(&(digits[first][row][c]))); // show only if score is >= 10 ()
-				}
-
-				else {
+					if (first > 0) matrix.setLed(0, row, col, pgm_read_byte(&(digits[first][row][c]))); // show only if score is >= 10 (see above)
+				} else {
 					c -= 8;
 					if (c >= 0 && c < 8) {
-						matrix.setLed(0, row, col, pgm_read_byte(&(digits[second][row][   c     ]))); // show always
+						matrix.setLed(0, row, col, pgm_read_byte(&(digits[second][row][c]))); // show always
 					}
 				}
 			}
