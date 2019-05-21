@@ -15,6 +15,21 @@ Breadboard      | https://ebay.us/e6J8uB | **1.59 USD** |
 **Total**       |                        | **10.56 USD**
 
 
+
+# Wiring diagram
+Pin           | Arduino NANO or UNO
+:------------ | :------------------
+Matrix CLK    | 10
+Matrix CS     | 11
+Matrix DIN    | 12
+Joystick X    | A2
+Joystick Y    | A3
+Potentiometer | A7
+
+![wiring diagram](https://raw.githubusercontent.com/ondt/arduino-snake/master/images/snake_joystick.png "wiring diagram")
+
+
+
 # Other variants
 - Arduino snake with sound: https://github.com/der-pw/arduino-snake
 
