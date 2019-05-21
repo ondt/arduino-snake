@@ -1,9 +1,7 @@
 # Video: https://youtu.be/k6CHJ9VKTnY
 
 
-
-
-# Parts
+# Parts :balloon:
 Part Name       |       Ebay Link        |        Price | Note
 :-------------- | ---------------------- | -----------: | :------------------------------------------------
 Arduino NANO    | https://ebay.us/ggAEYn | **3.42 USD** | [UNO](https://ebay.us/Y1kYb3) can be used as well
@@ -16,7 +14,7 @@ Breadboard      | https://ebay.us/e6J8uB | **1.59 USD** |
 
 
 
-# Wiring diagram
+# Wiring diagram :tada:
 Pin           | Arduino NANO or UNO
 :------------ | :------------------
 Matrix CLK    | 10
