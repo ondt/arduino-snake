@@ -1,9 +1,7 @@
 # Video: https://youtu.be/k6CHJ9VKTnY
 
 
-
-
-# Parts
+# Parts :balloon:
 Part Name       |       Ebay Link        |        Price | Note
 :-------------- | ---------------------- | -----------: | :------------------------------------------------
 Arduino NANO    | https://ebay.us/ggAEYn | **3.42 USD** | [UNO](https://ebay.us/Y1kYb3) can be used as well
@@ -13,6 +11,21 @@ Potentiometer   | https://ebay.us/CGqV6q | **1.37 USD** | any 1k ohm to 100k ohm
 Some wires      | https://ebay.us/ktnbye | **1.20 USD** | 12 wires needed
 Breadboard      | https://ebay.us/e6J8uB | **1.59 USD** | 
 **Total**       |                        | **10.56 USD**
+
+
+
+# Wiring diagram :tada:
+Pin           | Arduino NANO or UNO
+:------------ | :------------------
+Matrix CLK    | 10
+Matrix CS     | 11
+Matrix DIN    | 12
+Joystick X    | A2
+Joystick Y    | A3
+Potentiometer | A7
+
+![wiring diagram](https://raw.githubusercontent.com/ondt/arduino-snake/master/images/snake_joystick.png "wiring diagram")
+
 
 
 # Other variants
