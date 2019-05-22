@@ -125,25 +125,15 @@ void generateFood() {
 }
 
 
-// custom inverse logarithm with variable steepness (logarithmity), see https://www.desmos.com/calculator/qmyqv84xis (input = 0...1)
-float lnx(float n) {
-	if (n < 0) return 0;
-	if (n > 1) return 1;
-	n = -log(-n * logarithmity + 1); // natural logarithm
-	if (isinf(n)) n = lnx(0.999999); // prevent returning 'inf'
-	return n;
-}
-
-
 // watches joystick movements & blinks with food
 void scanJoystick() {
 	int previousDirection = snakeDirection; // save the last direction
-	long timestamp = millis() + snakeSpeed; // when the next frame will be rendered
+	long timestamp = millis();
 
-	while (millis() < timestamp) {
-		// calculate snake speed logarithmically (10...1000ms)
+	while (millis() < timestamp + snakeSpeed) {
+		// calculate snake speed exponentially (10...1000ms)
 		float raw = mapf(analogRead(Pin::potentiometer), 0, 1023, 0, 1);
-		snakeSpeed = mapf(lnx(raw), lnx(0), lnx(1), 10, 1000);
+		snakeSpeed = mapf(pow(raw, 3.5), 0, 1, 10, 1000); // change the speed exponentially
 		if (snakeSpeed == 0) snakeSpeed = 1; // safety: speed can not be 0
 
 		// determine the direction of the snake
