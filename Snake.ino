@@ -272,6 +272,31 @@ void unrollSnake() {
 	// switch off the food LED
 	matrix.setLed(0, food.row, food.col, 0);
 
+	delay(800);
+
+	// flash the screen 5 times
+	for (int i = 0; i < 5; i++) {
+		// invert the screen
+		for (int row = 0; row < 8; row++) {
+			for (int col = 0; col < 8; col++) {
+				matrix.setLed(0, row, col, gameboard[row][col] == 0 ? 1 : 0);
+			}
+		}
+
+		delay(20);
+
+		// invert it back
+		for (int row = 0; row < 8; row++) {
+			for (int col = 0; col < 8; col++) {
+				matrix.setLed(0, row, col, gameboard[row][col] == 0 ? 0 : 1);
+			}
+		}
+
+		delay(50);
+
+	}
+
+
 	delay(600);
 
 	for (int i = 1; i <= snakeLength; i++) {
@@ -480,29 +505,67 @@ const PROGMEM bool digits[][8][8] = {
 
 // scrolls the 'snake' message around the matrix
 void showSnakeMessage() {
-	for (int d = 0; d < sizeof(snakeMessage[0]) - 7; d++) {
-		for (int col = 0; col < 8; col++) {
-			delay(messageSpeed);
-			for (int row = 0; row < 8; row++) {
-				// this reads the byte from the PROGMEM and displays it on the screen
-				matrix.setLed(0, row, col, pgm_read_byte(&(snakeMessage[row][col + d])));
+	[&] {
+		for (int d = 0; d < sizeof(snakeMessage[0]) - 7; d++) {
+			for (int col = 0; col < 8; col++) {
+				delay(messageSpeed);
+				for (int row = 0; row < 8; row++) {
+					// this reads the byte from the PROGMEM and displays it on the screen
+					matrix.setLed(0, row, col, pgm_read_byte(&(snakeMessage[row][col + d])));
+				}
+			}
+
+			// if the joystick is moved, exit the message
+			if (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+			        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+			        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+			        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {
+				return; // return the lambda function
 			}
 		}
-	}
+	}();
+
+	matrix.clearDisplay(0);
+
+	// wait for joystick co come back
+	while (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+	        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+	        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+	        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {}
+
 }
 
 
 // scrolls the 'game over' message around the matrix
 void showGameOverMessage() {
-	for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
-		for (int col = 0; col < 8; col++) {
-			delay(messageSpeed);
-			for (int row = 0; row < 8; row++) {
-				// this reads the byte from the PROGMEM and displays it on the screen
-				matrix.setLed(0, row, col, pgm_read_byte(&(gameOverMessage[row][col + d])));
+	[&] {
+		for (int d = 0; d < sizeof(gameOverMessage[0]) - 7; d++) {
+			for (int col = 0; col < 8; col++) {
+				delay(messageSpeed);
+				for (int row = 0; row < 8; row++) {
+					// this reads the byte from the PROGMEM and displays it on the screen
+					matrix.setLed(0, row, col, pgm_read_byte(&(gameOverMessage[row][col + d])));
+				}
+			}
+
+			// if the joystick is moved, exit the message
+			if (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+			        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+			        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+			        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {
+				return; // return the lambda function
 			}
 		}
-	}
+	}();
+
+	matrix.clearDisplay(0);
+
+	// wait for joystick co come back
+	while (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+	        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+	        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+	        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {}
+
 }
 
 
@@ -520,30 +583,49 @@ void showScoreMessage(int score) {
 	int second = score % 10;
 	int first = (score / 10) % 10;
 
-	for (int d = 0; d < sizeof(scoreMessage[0]) + 2 * sizeof(digits[0][0]); d++) {
-		for (int col = 0; col < 8; col++) {
-			delay(messageSpeed);
-			for (int row = 0; row < 8; row++) {
-				if (d <= sizeof(scoreMessage[0]) - 8) {
-					matrix.setLed(0, row, col, pgm_read_byte(&(scoreMessage[row][col + d])));
-				}
+	[&] {
+		for (int d = 0; d < sizeof(scoreMessage[0]) + 2 * sizeof(digits[0][0]); d++) {
+			for (int col = 0; col < 8; col++) {
+				delay(messageSpeed);
+				for (int row = 0; row < 8; row++) {
+					if (d <= sizeof(scoreMessage[0]) - 8) {
+						matrix.setLed(0, row, col, pgm_read_byte(&(scoreMessage[row][col + d])));
+					}
 
-				int c = col + d - sizeof(scoreMessage[0]) + 6; // move 6 px in front of the previous message
+					int c = col + d - sizeof(scoreMessage[0]) + 6; // move 6 px in front of the previous message
 
-				// if the score is < 10, shift out the first digit (zero)
-				if (score < 10) c += 8;
+					// if the score is < 10, shift out the first digit (zero)
+					if (score < 10) c += 8;
 
-				if (c >= 0 && c < 8) {
-					if (first > 0) matrix.setLed(0, row, col, pgm_read_byte(&(digits[first][row][c]))); // show only if score is >= 10 (see above)
-				} else {
-					c -= 8;
 					if (c >= 0 && c < 8) {
-						matrix.setLed(0, row, col, pgm_read_byte(&(digits[second][row][c]))); // show always
+						if (first > 0) matrix.setLed(0, row, col, pgm_read_byte(&(digits[first][row][c]))); // show only if score is >= 10 (see above)
+					} else {
+						c -= 8;
+						if (c >= 0 && c < 8) {
+							matrix.setLed(0, row, col, pgm_read_byte(&(digits[second][row][c]))); // show always
+						}
 					}
 				}
 			}
+
+			// if the joystick is moved, exit the message
+			if (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+			        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+			        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+			        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {
+				return; // return the lambda function
+			}
 		}
-	}
+	}();
+
+	matrix.clearDisplay(0);
+
+	//	// wait for joystick co come back
+	//	while (analogRead(Pin::joystickY) < joystickHome.y - joystickThreshold
+	//	        || analogRead(Pin::joystickY) > joystickHome.y + joystickThreshold
+	//	        || analogRead(Pin::joystickX) < joystickHome.x - joystickThreshold
+	//	        || analogRead(Pin::joystickX) > joystickHome.x + joystickThreshold) {}
+
 }
 
 
