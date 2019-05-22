@@ -9,7 +9,6 @@
 struct Pin {
 	static const short joystickX = A2;   // joystick X axis pin
 	static const short joystickY = A3;   // joystick Y axis pin
-	//	static const short joystickKEY = 18; // (not used) joystick KEY pin (Analog 4) (Z axis button)
 	static const short joystickVCC = 15; // virtual VCC for the joystick (Analog 1) (to make the joystick connectable right next to the arduino nano)
 	static const short joystickGND = 14; // virtual GND for the joystick (Analog 0) (to make the joystick connectable right next to the arduino nano)
 
@@ -97,11 +96,8 @@ const int joystickThreshold = 160;
 // artificial logarithmity (steepness) of the potentiometer (-1 = linear, 1 = natural, bigger = steeper (recommended 0...1))
 const float logarithmity = 0.4;
 
-// the age array: holds an 'age' of the every pixel in the matrix. If age > 0, it glows.
-// on every frame, the age of all lit pixels is incremented.
-// when the age of some pixel exceeds the length of the snake, it goes out.
-// age 1 is added in the current snake direction next to the last position of the snake head.
-int age[8][8] = {};
+// snake body segments storage
+int gameboard[8][8] = {};
 
 
 
@@ -124,7 +120,7 @@ void generateFood() {
 		do {
 			food.col = random(8);
 			food.row = random(8);
-		} while (age[food.row][food.col] > 0);
+		} while (gameboard[food.row][food.col] > 0);
 	}
 }
 
@@ -197,8 +193,8 @@ void calculateSnake() {
 			return;
 	}
 
-	// if there is any age (snake body), this will cause the end of the game (snake must be moving)
-	if (age[snake.row][snake.col] > 1 && snakeDirection != 0) {
+	// if there is a snake body segment, this will cause the end of the game (snake must be moving)
+	if (gameboard[snake.row][snake.col] > 1 && snakeDirection != 0) {
 		gameOver = true;
 		return;
 	}
@@ -214,18 +210,28 @@ void calculateSnake() {
 		// increment all the snake body segments
 		for (int row = 0; row < 8; row++) {
 			for (int col = 0; col < 8; col++) {
-				if (age[row][col] > 0 ) {
-					age[row][col]++;
+				if (gameboard[row][col] > 0 ) {
+					gameboard[row][col]++;
 				}
 			}
 		}
 	}
 
 	// add new segment at the snake head location
-	age[snake.row][snake.col] = snakeLength + 1; // will be decremented in a moment
-	
-	// decrement all the snake body segments
-	updateAges();
+	gameboard[snake.row][snake.col] = snakeLength + 1; // will be decremented in a moment
+
+	// decrement all the snake body segments, if segment is 0, turn the corresponding led off
+	for (int row = 0; row < 8; row++) {
+		for (int col = 0; col < 8; col++) {
+			// if there is a body segment, decrement it's value
+			if (gameboard[row][col] > 0 ) {
+				gameboard[row][col]--;
+			}
+
+			// display the current pixel
+			matrix.setLed(0, row, col, gameboard[row][col] == 0 ? 0 : 1);
+		}
+	}
 }
 
 
@@ -238,27 +244,11 @@ void fixEdge() {
 }
 
 
-// decrement all the snake body segments, if segment is 0, turn the corresponding led off
-void updateAges() {
-	for (int row = 0; row < 8; row++) {
-		for (int col = 0; col < 8; col++) {
-			// if there is a body segment, decrement it's value
-			if (age[row][col] > 0 ) {
-				age[row][col]--;
-			}
-
-			// display the current pixel
-			matrix.setLed(0, row, col, age[row][col] == 0 ? 0 : 1);
-		}
-	}
-}
-
-
 void handleGameStates() {
 	if (gameOver || win) {
 		unrollSnake();
 
-		showScoreMessage(snakeLength);
+		showScoreMessage(snakeLength - initialSnakeLength);
 
 		if (gameOver) showGameOverMessage();
 		else if (win) showWinMessage();
@@ -272,7 +262,7 @@ void handleGameStates() {
 		food.col = -1;
 		snakeLength = initialSnakeLength;
 		snakeDirection = 0;
-		memset(age, 0, sizeof(age[0][0]) * 8 * 8);
+		memset(gameboard, 0, sizeof(gameboard[0][0]) * 8 * 8);
 		matrix.clearDisplay(0);
 	}
 }
@@ -287,7 +277,7 @@ void unrollSnake() {
 	for (int i = 1; i <= snakeLength; i++) {
 		for (int row = 0; row < 8; row++) {
 			for (int col = 0; col < 8; col++) {
-				if (age[row][col] == i) {
+				if (gameboard[row][col] == i) {
 					matrix.setLed(0, row, col, 0);
 					delay(100);
 				}
@@ -318,8 +308,6 @@ void initialize() {
 	pinMode(Pin::joystickGND, OUTPUT);
 	digitalWrite(Pin::joystickGND, LOW);
 
-	//	pinMode(Pin::joystickKEY, INPUT_PULLUP);
-
 	matrix.shutdown(0, false);
 	matrix.setIntensity(0, intensity);
 	matrix.clearDisplay(0);
@@ -334,8 +322,8 @@ void dumpGameBoard() {
 	String buff = "\n\n\n";
 	for (int row = 0; row < 8; row++) {
 		for (int col = 0; col < 8; col++) {
-			if (age[row][col] < 10) buff += " ";
-			if (age[row][col] != 0) buff += age[row][col];
+			if (gameboard[row][col] < 10) buff += " ";
+			if (gameboard[row][col] != 0) buff += gameboard[row][col];
 			else if (col == food.col && row == food.row) buff += "@";
 			else buff += "-";
 			buff += " ";
@@ -353,16 +341,15 @@ void dumpGameBoard() {
 // -------------------------- messages --------------------------- //
 // --------------------------------------------------------------- //
 
-
-const PROGMEM bool snejkMessage[8][56] = {
+const PROGMEM bool snakeMessage[8][56] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
 const PROGMEM bool gameOverMessage[8][90] = {
@@ -493,12 +480,12 @@ const PROGMEM bool digits[][8][8] = {
 
 // scrolls the 'snake' message around the matrix
 void showSnakeMessage() {
-	for (int d = 0; d < sizeof(snejkMessage[0]) - 7; d++) {
+	for (int d = 0; d < sizeof(snakeMessage[0]) - 7; d++) {
 		for (int col = 0; col < 8; col++) {
 			delay(messageSpeed);
 			for (int row = 0; row < 8; row++) {
 				// this reads the byte from the PROGMEM and displays it on the screen
-				matrix.setLed(0, row, col, pgm_read_byte(&(snejkMessage[row][col + d])));
+				matrix.setLed(0, row, col, pgm_read_byte(&(snakeMessage[row][col + d])));
 			}
 		}
 	}
