@@ -35,8 +35,7 @@ Joystick Y    | A3
 Potentiometer | A7
 
 ![wiring diagram](https://raw.githubusercontent.com/ondt/arduino-snake/master/images/snake_joystick.png "wiring diagram")
-
-
+\* the exact pin order of the matrix or joystick may be different from the one shown on image
 
 # Other variants :eyes:
 - Arduino snake with sound: https://github.com/der-pw/arduino-snake
