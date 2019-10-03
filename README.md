@@ -2,7 +2,7 @@
 
 
 # Tutorial :loudspeaker:
-1. Get the parts, install [Arduino IDE](https://www.arduino.cc/en/Main/Software), install drivers for Arduino (if you have Arduino clone)
+1. Get the parts, install [Arduino IDE](https://www.arduino.cc/en/Main/Software), install drivers for Arduino (if you have Arduino clone AND you are using Windows for some strange reason)
 2. Copy-paste [the code](https://github.com/ondt/arduino-snake/blob/master/Snake.ino) into Arduino IDE
 3. Install the `LedControl` library using Arduino IDE [Library Manager](https://www.arduino.cc/en/Guide/Libraries#toc2)
 4. Wire everything up _(see the Wiring Diagram)_
@@ -35,7 +35,7 @@ Joystick Y    | A3
 Potentiometer | A7
 
 ![wiring diagram](https://raw.githubusercontent.com/ondt/arduino-snake/master/images/snake_joystick.png "wiring diagram")
-\* the exact pin order of the matrix or joystick may be different from the one shown on image
+The exact pin order for the matrix or joystick may be different from the one shown on the image, so please be intelligent and use the table above
 
 # Other variants :eyes:
 - Arduino snake with sound: https://github.com/der-pw/arduino-snake
