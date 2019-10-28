@@ -37,6 +37,19 @@ Potentiometer | A7
 ![wiring diagram](https://raw.githubusercontent.com/ondt/arduino-snake/master/images/snake_joystick.png "wiring diagram")
 The exact pin order for the matrix or joystick may be different from the one shown on the image, so please be intelligent and use the table above
 
+
+
 # Other variants :eyes:
 - Arduino snake with sound: https://github.com/der-pw/arduino-snake
+
+
+
+
+# Videos :movie_camera: (thanks guys!)
+- Mine, old version: https://youtu.be/k6CHJ9VKTnY
+- Build tutorial: https://youtu.be/u9vSvXD0lks
+- Build tutorial, english: https://youtu.be/XmKCHVKZTkE
+- Very nice LEGO case: https://youtu.be/4oAePbd0kgw
+- French video: https://youtu.be/tpbvVYAhIFE
+- Turkish video: https://youtu.be/I_aaRdFOONc
 
