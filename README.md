@@ -1,8 +1,8 @@
 # Video: https://youtu.be/k6CHJ9VKTnY
 
 
-# Tutorial :loudspeaker:
-1. Get the parts, install [Arduino IDE](https://www.arduino.cc/en/Main/Software), install drivers for Arduino (if you have Arduino clone AND you are using Windows for some strange reason)
+# Tutorial
+1. Get the parts, install [Arduino IDE](https://www.arduino.cc/en/Main/Software), install drivers for Arduino (if you have Arduino clone AND you are using Windows)
 2. Copy-paste [the code](https://github.com/ondt/arduino-snake/blob/master/Snake.ino) into Arduino IDE
 3. Install the `LedControl` library using Arduino IDE [Library Manager](https://www.arduino.cc/en/Guide/Libraries#toc2)
 4. Wire everything up _(see the Wiring Diagram)_
@@ -11,7 +11,7 @@
 7. _(optional)_ Tweak the variables, explore the code :wink:
 
 
-# Parts :balloon:
+# Parts
 Part Name            |      Amazon link       | Note
 :------------------- | ---------------------- | :------------------------------------------------
 Arduino NANO (clone) | https://www.amazon.com/s?k=arduino+nano | UNO can be used as well
@@ -23,7 +23,7 @@ Breadboard           | https://www.amazon.com/s?k=arduino+breadboard |
 
 
 
-# Wiring diagram :tada:
+# Wiring diagram
 Pin           | Arduino NANO or UNO
 :------------ | :------------------
 Matrix CLK    | 10
@@ -38,13 +38,13 @@ The exact pin order for the matrix or joystick may be different from the one sho
 
 
 
-# Forks :eyes:
+# Forks
 - Arduino snake with sound: https://github.com/der-pw/arduino-snake
 
 
 
 
-# Other videos :movie_camera:
+# Other videos
 - Mine, old version: https://youtu.be/k6CHJ9VKTnY
 - Build tutorial: https://youtu.be/u9vSvXD0lks
 - Build tutorial, english: https://youtu.be/XmKCHVKZTkE
